@@ -5,6 +5,7 @@
   "main": "main.js",
   "dependencies": {},
   "devDependencies": {
+    "keypress": "^0.2.1",
     "sphero": "^0.7.0"
   },
   "scripts": {
