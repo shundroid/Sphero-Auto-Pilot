@@ -121,6 +121,9 @@ function connect() {
   console.log("つながりました");
   orb.color(config.defaultColor);
   orb.detectCollisions();
+  powerState().then(data => {
+    console.log("batteryState:", data.batteryState);
+  });
   orb.on("collision", collision);
   roll();
   setRefreshId();
