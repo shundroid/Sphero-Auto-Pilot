@@ -1,17 +1,17 @@
 var sphero = require("sphero");
 var orb = sphero("COM7"); // 自分の Sphero の ID に置き換える
 
-var myOrb_color_default = "red";
-var myOrb_color_collision = "green";
+var myOrb_color_default = "goldenrod";
+var myOrb_color_collision = "mediumspringgreen";
 
-var myOrb_speed = 255; // 速度
+var myOrb_speed = 125; // 速度
 var myOrb_degree = 0; // 初期角度 (0-359 度表記)
-var collision_limit = 100; // この回数だけ衝突すると終了
+var collision_limit = 1000; // この回数だけ衝突すると終了
 var collision_num = 0;
 
 var setTimeoutId = -1;
 
-var backTime = 10000;
+var backTime = 7000;
 
 orb.connect(function() {
 
