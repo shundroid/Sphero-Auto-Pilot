@@ -1,15 +1,17 @@
+// モジュールの読み込み
 var sphero = require("sphero");
-var orb = sphero("COM7"); // 自分の Sphero の ID に置き換える
+var config = require("./config");
+var powerState = require("./powerState");
+var keypress = require("keypress");
+var timer = require("./timer");
 
-var myOrb_color_default = "goldenrod";
-var myOrb_color_collision = "mediumspringgreen";
+// Spheroの初期化
+var orb = sphero(config.serialPort);
 
-var myOrb_speed = 255; // 速度
 var myOrb_degree = 0; // 初期角度 (0-359 度表記)
-var collision_limit = 1000; // この回数だけ衝突すると終了
 var collision_num = 0;
 
-var setTimeoutId = -1;
+var refreshId = -1;
 
 var refreshTime = 5000;
 
@@ -17,88 +19,120 @@ var isNextCollision = false;
 
 var startTime;
 
-var keypress = require("keypress");
+/**
+ * 曲がります。引数は曲がる角度。省略すると270°になります
+ */
+function changeDegree(deg) {
+    var _deg = (typeof deg === "undefined" ? 270 : deg);
+    console.log(_deg);
+    myOrb_degree = (myOrb_degree+_deg)%360;
+};
 
-orb.connect(function() {
-  startTime = new Date().getTime();
-    console.log("つながりました");
-    orb.color(myOrb_color_default);
-    orb.detectCollisions();
-orb.getPowerState(function(err, data) {
-  if (err) {
-    console.log("error: ", err);
+/**
+ * 衝突時に呼び出されます
+ */
+function collision() {
+  if (isNextCollision) {
+    console.log("痛い！");
+    changeDegree();
+    setRefreshId();
   } else {
-    console.log("data:");
-    console.log("  recVer:", data.recVer);
-    console.log("  batteryState:", data.batteryState);
-    console.log("  batteryVoltage:", data.batteryVoltage);
-    console.log("  chargeCount:", data.chargeCount);
-    console.log("  secondsSinceCharge:", data.secondsSinceCharge);
+    console.log("スキップします");
   }
-});
-    // 進行方向の変更
-    function changeDegree(deg) {
-        var _deg = (typeof deg === "undefined" ? 270 : deg);
-        console.log(_deg);
-        myOrb_degree = (myOrb_degree+_deg)%360;
-    };
+  orb.color(config.collisionColor);
+  roll();
+  countCollision();
+  setTimeout(function() {
+    orb.color(config.defaultColor);
+  }, 250);
+  isNextCollision = !isNextCollision;
+}
 
-    // 衝突時に発生するイベント
-    orb.on("collision", function() {
-        if (isNextCollision) {
-          console.log("痛い！");
-          changeDegree();
-          if (setTimeoutId !== -1) {
-            clearTimeout(setTimeoutId);
-          }
-          setTimeoutId = setTimeout(refresh, refreshTime);
-        } else {
-          console.log("スキップします");
-        }
-        orb.color(myOrb_color_collision);
-        orb.roll(myOrb_speed, myOrb_degree);
-        collision_num++;
-        if(collision_num >= collision_limit) {
-          orb.color("firebrick");
-          orb.disconnect(function() {
-              console.log("end");
-          });
-        }
-        setTimeout(function() {
-          orb.color(myOrb_color_default);
-        }, 250);
-        isNextCollision = !isNextCollision;
-    });
-    
-    function refresh() {
-      console.log("リフレッシュします");
-      orb.color(myOrb_color_default);
-      changeDegree();
-      orb.roll(myOrb_speed, myOrb_degree);
-      if (setTimeoutId !== -1) {
-        clearTimeout(setTimeoutId);
-      }
-      setTimeoutId = setTimeout(refresh, refreshTime);
-    }
-    orb.roll(myOrb_speed, myOrb_degree);
-    setTimeoutId = setTimeout(refresh, refreshTime);
-    
-    keypress(process.stdin);
-    process.stdin.on("keypress", function(ch, key) {
-      if (key.ctrl && key.name === "c") {
-        process.stdin.pause();
-        process.exit();
-      } else if (key.name === "g") {
-        var gTime = new Date().getTime();
-        console.log("now time: " + gTime)
-        console.log("Goal Time: " + ((gTime - startTime) / 1000) + "秒");
-        orb.disconnect(function() {
-            console.log("end");
-        });
-      }
-    });
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    
-    console.log("start time: " + startTime);
-});
+/**
+ * 衝突した回数を記録し、一定回数衝突し、切断するかどうか判断します
+ * （Todo: 関数名英語おかしい？）
+ */
+function countCollision() {
+  collision_num++;
+  if(collision_num >= config.collisionLimit) {
+    disConnect();
+  }
+}
+
+/**
+ * Spheroとの切断の処理を行います。
+ */
+function disConnect() {
+  orb.color("firebrick");
+  orb.disconnect(function() {
+      console.log("end");
+  });
+}
+
+/**
+ * 一定時間collisionが呼び出されなかった時の処理を行います。
+ */
+function refresh() {
+  console.log("リフレッシュします");
+  orb.color(config.defaultColor);
+  changeDegree();
+  roll();
+  setRefreshId();
+}
+
+/**
+ * refreshを呼び出すsetTimeoutを設定します。
+ */
+function setRefreshId() {
+  if (refreshId !== -1) {
+    clearTimeout(refreshId);
+  }
+  refreshId = setTimeout(refresh, refreshTime);
+}
+
+/**
+ * Keypressを初期化します。
+ */
+function initKeyPress() {
+  keypress(process.stdin);
+  process.stdin.on("keypress", keyPress);
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+}
+
+/**
+ * Keypressされた時の処理です。
+ */
+function keyPress(ch, key) {
+  if (key.ctrl && key.name === "c") {
+    // Ctrl+Cで終了できるようにする
+    process.stdin.pause();
+    process.exit();
+  } else if (key.name === "g") {
+    // ゴール時の処理
+    var time = timer.getTime(false);
+    console.log("Goal Time: " + (time / 1000) + "秒");
+    disConnect();
+  }
+}
+
+/**
+ * 現在の角度で動かします
+ */
+function roll() {
+  orb.roll(config.speed, myOrb_degree);
+}
+
+/**
+ * 接続された時の処理を行います。
+ */
+function connect() {
+  console.log("つながりました");
+  orb.color(config.defaultColor);
+  orb.detectCollisions();
+  orb.on("collision", collision);
+  roll();
+  setRefreshId();
+  timer.start(true);
+}
+orb.connect(connect);
