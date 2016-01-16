@@ -2,22 +2,16 @@
 var sphero = require("sphero");
 var config = require("./config");
 var powerState = require("./powerState");
-var keypress = require("keypress");
+var keypressManager = require("./keypressManager");
 var timer = require("./timer");
 
 // Spheroの初期化
 var orb = sphero(config.serialPort);
 
-var myOrb_degree = 0; // 初期角度 (0-359 度表記)
+var myOrb_degree = config.defaultDegree; // 初期角度 (0-359 度表記)
 var collision_num = 0;
-
 var refreshId = -1;
-
-var refreshTime = 5000;
-
 var isNextCollision = false;
-
-var startTime;
 
 /**
  * 曲がります。引数は曲がる角度。省略すると270°になります
@@ -87,17 +81,14 @@ function setRefreshId() {
   if (refreshId !== -1) {
     clearTimeout(refreshId);
   }
-  refreshId = setTimeout(refresh, refreshTime);
+  refreshId = setTimeout(refresh, config.refreshTime);
 }
 
 /**
  * Keypressを初期化します。
  */
 function initKeyPress() {
-  keypress(process.stdin);
-  process.stdin.on("keypress", keyPress);
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
+  keypressManager.init(keyPress);
 }
 
 /**
