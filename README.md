@@ -20,8 +20,8 @@ gキーを押すとゴールしたということにし、接続されてから�
 
 ## File
 
-- Spheroの設定やスピードなどのチート系: config.jsで設定
-- バッテリー情報を取得する（バッテリー少ないから）: powerState.js
+- Spheroの設定やスピードなど: config.jsで設定
+- バッテリー情報を取得する（バッテリーの容量が少ないからこまめにチェック）: powerState.js
 - 接続されてからの時間を取得する: timer.js
 - `Keypress`の初期化など: keypressManager.js
 - それらをまとめる: main.js
